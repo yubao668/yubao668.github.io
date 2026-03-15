@@ -1,358 +1,129 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全市场LOF折溢价查询（双源+历史）</title>
-    <style>
-        * {margin:0;padding:0;box-sizing:border-box;font-family:PingFang SC, Microsoft YaHei, sans-serif;}
-        body {background:#f4f6f8;padding:10px;max-width:800px;margin:0 auto;}
-        .container {width:100%;}
-        .title {text-align:center;margin:10px 0 20px;font-size:18px;font-weight:600;color:#333;}
-        .tools {display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
-        #search {flex:1;min-width:200px;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;}
-        .btn-group {display:flex;gap:8px;}
-        button {padding:8px 12px;border:none;border-radius:8px;background:#42b983;color:white;font-size:14px;cursor:pointer;transition:background 0.2s;}
-        button:hover {background:#359469;}
-        button.stop {background:#ff444f;}
-        button.stop:hover {background:#d32f2f;}
-        #status {text-align:center;margin:10px 0;font-size:14px;color:#666;}
-        .refresh-tip {text-align:center;font-size:12px;color:#999;margin:8px 0;}
-        .history-btn {text-align:center;margin:10px 0;}
-        .history-modal {position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;justify-content:center;align-items:center;z-index:999;}
-        .history-content {background:white;padding:20px;border-radius:10px;width:90%;max-width:600px;max-height:80vh;overflow-y:auto;}
-        .history-content h3 {margin-bottom:10px;text-align:center;}
-        .history-content .close {text-align:right;cursor:pointer;color:#ff444f;margin-bottom:10px;}
-        .history-list {font-size:14px;}
-        .history-item {padding:8px;border-bottom:1px solid #eee;margin:5px 0;}
-        .list {display:grid;gap:8px;}
-        .card {background:white;padding:12px;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.1);}
-        .card .fund-info {display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
-        .card .fund-code-name {font-weight:600;font-size:14px;color:#333;}
-        .card .fund-rate {font-size:14px;font-weight:600;}
-        .card .fund-price-nav {font-size:13px;color:#666;display:flex;justify-content:space-between;}
-        .card .data-source {font-size:12px;color:#999;margin-top:4px;}
-        .red {color:#ff444f;}
-        .green {color:#00b47a;}
-        .grey {color:#999;}
-        .warning {color:#ff9800;font-size:12px;}
-        .tip {text-align:center;font-size:12px;color:#999;margin:16px 0 8px;}
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>全市场LOF折溢价实时工具</title>
+<style>
+body{margin:0;padding:10px;background:#f4f6f8;font-family:system-ui, sans-serif}
+.container{max-width:800px;margin:0 auto}
+.title{text-align:center;margin:10px 0 20px;font-size:18px}
+.btns{display:flex;gap:8px;justify-content:center;margin-bottom:16px}
+button{padding:8px 12px;border:none;border-radius:8px;background:#42b983;color:white;font-size:14px}
+input{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px}
+.list{display:grid;gap:8px}
+.card{background:white;padding:12px;border-radius:10px;box-shadow:0 1px 3px #0000001}
+.row{display:flex;justify-content:space-between;font-size:14px;margin:2px 0}
+.red{color:#ff444f}
+.green{color:#00b47a}
+.grey{color:#999}
+.tip{text-align:center;font-size:12px;color:#999;margin:16px 0 8px}
+</style>
 </head>
 
 <body>
-    <div class="container">
-        <div class="title">全市场LOF折溢价实时查询（双源校验）</div>
-        <div class="tools">
-            <input type="text" id="search" placeholder="搜索代码/名称" oninput="filterList()">
-            <div class="btn-group">
-                <button onclick="loadAll()">刷新全部LOF</button>
-                <button id="auto-refresh-btn" onclick="toggleAutoRefresh()">开启自动刷新</button>
-                <button onclick="showHistory()">查看历史数据</button>
-            </div>
-        </div>
-        <div id="status">加载中...</div>
-        <div class="refresh-tip" id="refresh-tip" style="display: none;">自动刷新已开启，每30秒更新一次 | 剩余 <span id="countdown">30</span> 秒</div>
-        <div id="list" class="list"></div>
-        <div class="tip">数据来源：东方财富+同花顺（双源校验） | 净值为前一日数据 | 仅供参考，不构成投资建议</div>
+<div class="container">
+  <div class="title">全市场LOF折溢价实时查询</div>
+  <input type="text" id="search" placeholder="搜索代码/名称" oninput="filterList()">
+  <div class="btns">
+    <button onclick="loadAll()">刷新全部LOF</button>
+  </div>
+  <div id="status" style="text-align:center; margin:10px 0">加载中...</div>
+  <div id="list" class="list"></div>
+  <div class="tip">数据来源：天天基金网 | 净值为前一日数据 | 仅供参考，不构成投资建议</div>
+</div>
+
+<script>
+// 全市场LOF列表（从东财接口获取）
+let all = []
+let show = []
+
+// 页面加载自动跑
+window.onload = loadAll
+
+async function loadAll() {
+  document.getElementById('status').innerText = '正在获取全市场LOF列表...'
+  document.getElementById('list').innerHTML = ''
+  all = []
+
+  try {
+    // 东方财富LOF列表接口（已改为https）
+    const r = await fetch('https://fund.eastmoney.com/data/rankhandler.aspx?op=ph&dt=kf&ft=lof&sc=zzf&st=desc')
+    const txt = await r.text()
+    const data = JSON.parse(txt.match(/(\{.*\})/)[1])
+
+    const funds = data.datas.map(s => {
+      const arr = s.split(',')
+      return { code: arr[0], name: arr[1] }
+    })
+
+    document.getElementById('status').innerText = `共 ${funds.length} 只LOF，正在加载溢价...`
+
+    // 分批加载，避免浏览器崩
+    for (let i = 0; i < funds.length; i += 20) {
+      const batch = funds.slice(i, i + 20)
+      await Promise.all(batch.map(f => getOne(f)))
+      document.getElementById('status').innerText = `已加载 ${all.length} / ${funds.length}`
+      render()
+      await new Promise(r => setTimeout(r, 1000))
+    }
+
+    document.getElementById('status').innerText = '加载完成'
+  } catch (e) {
+    document.getElementById('status').innerText = '加载失败：网络或接口变更'
+  }
+}
+
+// 获取单只LOF价格、净值、溢价
+async function getOne(f) {
+  try {
+    const r = await fetch(`https://fund.eastmoney.com/pingzhongdata/${f.code}.js`)
+    const txt = await r.text()
+
+    // 净值
+    const dwjz = txt.match(/dwjz:"([\d.]+)"/)?.[1] || '-'
+    // 场内现价
+    const price = txt.match(/fundShareNav:"([\d.]+)"/)?.[1] || txt.match(/netChgPct:"([\d.]+)"/)?.[1] || '-'
+
+    let rate = '-'
+    if (price !== '-' && dwjz !== '-') {
+      rate = (((parseFloat(price) - parseFloat(dwjz)) / parseFloat(dwjz)) * 100).toFixed(2)
+    }
+
+    all.push({
+      code: f.code,
+      name: f.name,
+      price,
+      nav: dwjz,
+      rate
+    })
+  } catch (e) {}
+}
+
+// 渲染页面
+function render() {
+  show = [...all]
+  filterList()
+}
+
+// 搜索过滤
+function filterList() {
+  const kw = document.getElementById('search').value.toLowerCase()
+  show = all.filter(f =>
+    f.code.includes(kw) || f.name.toLowerCase().includes(kw)
+  )
+
+  const dom = document.getElementById('list')
+  dom.innerHTML = show.map(f => `
+    <div class="card">
+      <div class="row"><b>${f.code} ${f.name}</b></div>
+      <div class="row">现价 ${f.price} 净值 ${f.nav}</div>
+      <div class="row ${f.rate > 0 ? 'red' : f.rate < 0 ? 'green' : 'grey'}">
+        溢价 ${f.rate > 0 ? '+' : ''}${f.rate}%
+      </div>
     </div>
-
-    <!-- 历史数据弹窗 -->
-    <div class="history-modal" id="history-modal">
-        <div class="history-content">
-            <div class="close" onclick="hideHistory()">✖ 关闭</div>
-            <h3>LOF折溢价历史数据</h3>
-            <div class="history-list" id="history-list"></div>
-        </div>
-    </div>
-
-    <script>
-        // 全局变量
-        let allLOF = [];          // 全市场LOF最终数据（双源校验后）
-        let filteredLOF = [];     // 筛选后展示的LOF
-        let autoRefreshTimer = null; // 自动刷新定时器
-        let autoRefreshEnabled = false; // 是否开启自动刷新
-        let countdown = 30;       // 自动刷新倒计时
-        let countdownTimer = null; // 倒计时定时器
-        const HISTORY_KEY = 'lof_premium_history'; // 本地存储key
-        const MAX_HISTORY = 10;    // 最多保存10条历史记录
-
-        // 页面加载初始化
-        window.onload = () => {
-            loadAll();
-        };
-
-        // 1. 核心：双源（东财+同花顺）获取单只LOF数据 + 准确性校验
-        async function getLOFData(fund) {
-            let eastmoneyData = null; // 东财数据
-            let 10jqkaData = null;    // 同花顺数据
-            let finalData = {
-                code: fund.code,
-                name: fund.name,
-                price: '—',
-                nav: '—',
-                rate: '—',
-                source: '无有效数据',
-                status: 'error'
-            };
-
-            try {
-                // ① 东方财富数据源
-                const emRes = await fetch(`https://fund.eastmoney.com/pingzhongdata/${fund.code}.js`);
-                const emTxt = await emRes.text();
-                const emNav = emTxt.match(/dwjz:"([\d.]+)"/)?.[1] || null;
-                const emPrice = emTxt.match(/fundShareNav:"([\d.]+)"/)?.[1] || emTxt.match(/price:"([\d.]+)"/)?.[1] || null;
-                eastmoneyData = { price: emPrice, nav: emNav };
-            } catch (e) {
-                console.warn(`东财获取${fund.code}失败`, e);
-            }
-
-            try {
-                // ② 同花顺数据源（公开接口）
-                const tsRes = await fetch(`https://q.10jqka.com.cn/fund/hslof/code/${fund.code}/`);
-                const tsTxt = await tsRes.text();
-                // 解析同花顺数据（适配接口返回格式）
-                const tsPriceMatch = tsTxt.match(/"price":"([\d.]+)"/);
-                const tsNavMatch = tsTxt.match(/"nav":"([\d.]+)"/);
-                const tsPrice = tsPriceMatch ? tsPriceMatch[1] : null;
-                const tsNav = tsNavMatch ? tsNavMatch[1] : null;
-                10jqkaData = { price: tsPrice, nav: tsNav };
-            } catch (e) {
-                console.warn(`同花顺获取${fund.code}失败`, e);
-            }
-
-            // ③ 数据准确性校验规则
-            // 价格优先级：同花顺 > 东财（同花顺实时性更高）
-            const finalPrice = 10jqkaData?.price || eastmoneyData?.price || '—';
-            // 净值优先级：东财 > 同花顺（东财净值更稳定）
-            const finalNav = eastmoneyData?.nav || 10jqkaData?.nav || '—';
-            // 溢价率计算（双源差值≤0.001才有效）
-            let finalRate = '—';
-            let status = 'normal';
-            let source = '';
-
-            if (finalPrice !== '—' && finalNav !== '—') {
-                // 计算双源价格/净值差值，校验准确性
-                const emPriceNum = eastmoneyData?.price ? parseFloat(eastmoneyData.price) : null;
-                const tsPriceNum = 10jqkaData?.price ? parseFloat(10jqkaData.price) : null;
-                const priceDiff = emPriceNum && tsPriceNum ? Math.abs(emPriceNum - tsPriceNum) : 0;
-
-                if (priceDiff > 0.001 && priceDiff !== 0) {
-                    // 双源价格差值超过0.001，标记异常
-                    status = 'warning';
-                    source = '数据异常（双源价格不一致）';
-                } else {
-                    // 数据有效，计算溢价率
-                    finalRate = (((parseFloat(finalPrice) - parseFloat(finalNav)) / parseFloat(finalNav)) * 100).toFixed(2);
-                    source = 10jqkaData?.price && eastmoneyData?.price ? '东财+同花顺' : 
-                             10jqkaData?.price ? '同花顺' : '东方财富';
-                }
-            }
-
-            // 组装最终数据
-            finalData = {
-                code: fund.code,
-                name: fund.name,
-                price: finalPrice,
-                nav: finalNav,
-                rate: finalRate,
-                source: source,
-                status: status
-            };
-
-            return finalData;
-        }
-
-        // 2. 加载全市场LOF + 双源校验 + 排序
-        async function loadAll() {
-            document.getElementById('status').innerText = '正在获取全市场LOF列表...';
-            document.getElementById('list').innerHTML = '';
-            allLOF = [];
-
-            try {
-                // 获取全市场LOF列表（东财接口）
-                const res = await fetch('https://fund.eastmoney.com/data/rankhandler.aspx?op=ph&dt=kf&ft=lof&sc=zzf&st=desc');
-                const txt = await res.text();
-                const data = JSON.parse(txt.match(/(\{.*\})/)[1]);
-                const fundList = data.datas.map(s => {
-                    const arr = s.split(',');
-                    return { code: arr[0], name: arr[1] };
-                });
-
-                document.getElementById('status').innerText = `共 ${fundList.length} 只LOF，双源校验中...`;
-
-                // 分批加载（每批20只）
-                for (let i = 0; i < fundList.length; i += 20) {
-                    const batch = fundList.slice(i, i + 20);
-                    const batchData = await Promise.all(batch.map(fund => getLOFData(fund)));
-                    allLOF = [...allLOF, ...batchData];
-                    document.getElementById('status').innerText = `已校验 ${Math.min(i + 20, fundList.length)} / ${fundList.length}`;
-                    renderList();
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
-
-                // 按溢价率降序排序
-                allLOF.sort((a, b) => {
-                    const rateA = a.rate === '—' ? -Infinity : parseFloat(a.rate);
-                    const rateB = b.rate === '—' ? -Infinity : parseFloat(b.rate);
-                    return rateB - rateA;
-                });
-
-                // 保存本次数据到本地历史
-                saveHistory(allLOF);
-
-                document.getElementById('status').innerText = `加载完成（共${allLOF.length}只有效LOF），双源校验通过`;
-                renderList();
-            } catch (e) {
-                document.getElementById('status').innerText = '加载失败：网络异常或接口格式变更';
-                console.error('加载失败', e);
-            }
-        }
-
-        // 3. 本地存储历史数据（解决无法保存历史的问题）
-        function saveHistory(currentData) {
-            // 过滤有效数据（有溢价率的LOF）
-            const validData = currentData.filter(item => item.rate !== '—');
-            // 生成历史记录
-            const historyRecord = {
-                time: new Date().toLocaleString(), // 记录时间
-                count: validData.length,
-                top5: validData.slice(0, 5) // 保存溢价率前5的LOF
-            };
-
-            // 读取现有历史
-            const existingHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-            // 添加新记录
-            existingHistory.unshift(historyRecord);
-            // 限制最多10条记录
-            if (existingHistory.length > MAX_HISTORY) {
-                existingHistory.pop();
-            }
-            // 保存到本地
-            localStorage.setItem(HISTORY_KEY, JSON.stringify(existingHistory));
-        }
-
-        // 4. 查看历史数据
-        function showHistory() {
-            const historyModal = document.getElementById('history-modal');
-            const historyList = document.getElementById('history-list');
-            const existingHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-
-            if (existingHistory.length === 0) {
-                historyList.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">暂无历史数据</div>';
-            } else {
-                historyList.innerHTML = existingHistory.map((record, index) => {
-                    const top5Html = record.top5.map(item => {
-                        const rateClass = parseFloat(item.rate) > 0 ? 'red' : 'green';
-                        const rateText = parseFloat(item.rate) > 0 ? `+${item.rate}%` : `${item.rate}%`;
-                        return `<div>${item.code} ${item.name}：<span class="${rateClass}">${rateText}</span></div>`;
-                    }).join('');
-
-                    return `
-                    <div class="history-item">
-                        <div><b>记录${index+1}：${record.time}</b></div>
-                        <div>有效LOF数量：${record.count}只</div>
-                        <div>溢价率前5：</div>
-                        <div>${top5Html}</div>
-                    </div>
-                    `;
-                }).join('');
-            }
-
-            historyModal.style.display = 'flex';
-        }
-
-        // 5. 隐藏历史数据弹窗
-        function hideHistory() {
-            document.getElementById('history-modal').style.display = 'none';
-        }
-
-        // 6. 渲染LOF列表
-        function renderList() {
-            filterList();
-        }
-
-        // 7. 搜索筛选
-        function filterList() {
-            const keyword = document.getElementById('search').value.trim().toLowerCase();
-            filteredLOF = keyword ? allLOF.filter(fund => 
-                fund.code.includes(keyword) || fund.name.toLowerCase().includes(keyword)
-            ) : [...allLOF];
-
-            const listDom = document.getElementById('list');
-            if (filteredLOF.length === 0) {
-                listDom.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">暂无匹配的LOF基金</div>';
-                return;
-            }
-
-            listDom.innerHTML = filteredLOF.map(fund => {
-                let rateClass = 'grey';
-                let rateText = fund.rate;
-                let statusClass = '';
-
-                if (fund.rate !== '—') {
-                    const rateNum = parseFloat(fund.rate);
-                    rateClass = rateNum > 0 ? 'red' : rateNum < 0 ? 'green' : 'grey';
-                    rateText = rateNum > 0 ? `+${rateNum}%` : `${rateNum}%`;
-                }
-
-                // 数据异常标记
-                if (fund.status === 'warning') {
-                    statusClass = 'warning';
-                    rateText += '（数据异常）';
-                }
-
-                return `
-                <div class="card">
-                    <div class="fund-info">
-                        <div class="fund-code-name">${fund.code} ${fund.name}</div>
-                        <div class="fund-rate ${rateClass} ${statusClass}">${rateText}</div>
-                    </div>
-                    <div class="fund-price-nav">
-                        <div>场内价格：${fund.price} 元</div>
-                        <div>单位净值：${fund.nav} 元</div>
-                    </div>
-                    <div class="data-source">数据来源：${fund.source}</div>
-                </div>
-                `;
-            }).join('');
-        }
-
-        // 8. 自动刷新控制
-        function toggleAutoRefresh() {
-            const btn = document.getElementById('auto-refresh-btn');
-            const tip = document.getElementById('refresh-tip');
-            
-            if (!autoRefreshEnabled) {
-                autoRefreshEnabled = true;
-                btn.innerText = '停止自动刷新';
-                btn.className = 'stop';
-                tip.style.display = 'block';
-                startCountdown();
-                autoRefreshTimer = setInterval(() => {
-                    loadAll();
-                    countdown = 30;
-                }, 30000);
-            } else {
-                autoRefreshEnabled = false;
-                btn.innerText = '开启自动刷新';
-                btn.className = '';
-                tip.style.display = 'none';
-                clearInterval(autoRefreshTimer);
-                clearInterval(countdownTimer);
-            }
-        }
-
-        // 9. 刷新倒计时
-        function startCountdown() {
-            if (countdownTimer) clearInterval(countdownTimer);
-            
-            countdownTimer = setInterval(() => {
-                countdown--;
-                document.getElementById('countdown').innerText = countdown;
-                if (countdown <= 0) countdown = 30;
-            }, 1000);
-        }
-    </script>
+  `).join('')
+}
+</script>
 </body>
 </html>
