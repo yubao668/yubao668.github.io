@@ -48,7 +48,9 @@ async function loadAll() {
 
   try {
     // 东方财富LOF列表接口（已改为https）
-    const r = await fetch('https://fund.eastmoney.com/data/rankhandler.aspx?op=ph&dt=kf&ft=lof&sc=zzf&st=desc')
+    const proxy = 'https://cors-anywhere.herokuapp.com/'
+    const r = await fetch(proxy + 'https://fund.eastmoney.com/data/rankhandler.aspx?op=ph&dt=kf&ft=lof&sc=zzf&st=desc')
+    
     const txt = await r.text()
     const data = JSON.parse(txt.match(/(\{.*\})/)[1])
 
@@ -77,7 +79,8 @@ async function loadAll() {
 // 获取单只LOF价格、净值、溢价
 async function getOne(f) {
   try {
-    const r = await fetch(`https://fund.eastmoney.com/pingzhongdata/${f.code}.js`)
+    const proxy = 'https://cors-anywhere.herokuapp.com/'
+    const r = await fetch(proxy + `https://fund.eastmoney.com/pingzhongdata/${f.code}.js`)
     const txt = await r.text()
 
     // 净值
