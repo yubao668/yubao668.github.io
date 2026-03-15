@@ -1,132 +1,96 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>全市场LOF折溢价实时工具</title>
-<style>
-body{margin:0;padding:10px;background:#f4f6f8;font-family:system-ui, sans-serif}
-.container{max-width:800px;margin:0 auto}
-.title{text-align:center;margin:10px 0 20px;font-size:18px}
-.btns{display:flex;gap:8px;justify-content:center;margin-bottom:16px}
-button{padding:8px 12px;border:none;border-radius:8px;background:#42b983;color:white;font-size:14px}
-input{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px}
-.list{display:grid;gap:8px}
-.card{background:white;padding:12px;border-radius:10px;box-shadow:0 1px 3px #0000001}
-.row{display:flex;justify-content:space-between;font-size:14px;margin:2px 0}
-.red{color:#ff444f}
-.green{color:#00b47a}
-.grey{color:#999}
-.tip{text-align:center;font-size:12px;color:#999;margin:16px 0 8px}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全市场LOF折溢价实时查询（带盘中估算）</title>
+    <style>
+        body{margin:0;padding:10px;background:#f4f6f8;font-family:system-ui, sans-serif}
+        .container{max-width:800px;margin:0 auto}
+        .title{text-align:center;margin:10px 0 20px;font-size:18px}
+        .btns{display:flex;gap:8px;justify-content:center;margin-bottom:16px}
+        button{padding:8px 12px;border:none;border-radius:8px;background:#42b983;color:white;font-size:14px}
+        input{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px}
+        .list{display:grid;gap:8px}
+        .card{background:white;padding:12px;border-radius:10px;box-shadow:0 1px 3px #0000001}
+        .row{display:flex;justify-content:space-between;font-size:14px;margin:2px 0}
+        .red{color:#ff444f}
+        .green{color:#00b47a}
+        .grey{color:#999}
+        .tip{text-align:center;font-size:12px;color:#999;margin:16px 0 8px}
+        .delay-note{text-align:center;color:#ff6600;margin:5px 0;font-size:14px}
+        .est-badge{background:#eef;padding:2px 5px;border-radius:4px;font-size:12px}
+    </style>
 </head>
-
 <body>
 <div class="container">
-  <div class="title">全市场LOF折溢价实时查询</div>
-  <input type="text" id="search" placeholder="搜索代码/名称" oninput="filterList()">
-  <div class="btns">
-    <button onclick="loadAll()">刷新全部LOF</button>
-  </div>
-  <div id="status" style="text-align:center; margin:10px 0">加载中...</div>
-  <div id="list" class="list"></div>
-  <div class="tip">数据来源：天天基金网 | 净值为前一日数据 | 仅供参考，不构成投资建议</div>
+    <div class="title">LOF折溢价实时查询（盘中估算）</div>
+    <div class="delay-note">⏱️ 数据每2-5分钟更新一次，实时估值基于跟踪指数估算，仅供参考</div>
+    <input type="text" id="search" placeholder="搜索代码/名称" oninput="filterList()">
+    <div class="btns">
+        <button onclick="loadAll()">刷新数据</button>
+    </div>
+    <div id="status" style="text-align:center; margin:10px 0">加载中...</div>
+    <div id="list" class="list"></div>
+    <div class="tip">数据来源：Tushare + 新浪财经 | 实时估值 = 前日净值 × (1+指数涨跌幅)</div>
 </div>
 
 <script>
-// 全市场LOF列表（从东财接口获取）
 let all = []
 let show = []
 
-// 页面加载自动跑
-window.onload = loadAll
-
 async function loadAll() {
-  document.getElementById('status').innerText = '正在获取全市场LOF列表...'
-  document.getElementById('list').innerHTML = ''
-  all = []
-
-  try {
-    // 东方财富LOF列表接口（已改为https）
-    const proxy = 'https://cors-anywhere.herokuapp.com/'
-    const r = await fetch(proxy + 'https://fund.eastmoney.com/data/rankhandler.aspx?op=ph&dt=kf&ft=lof&sc=zzf&st=desc')
-    
-    const txt = await r.text()
-    const data = JSON.parse(txt.match(/(\{.*\})/)[1])
-
-    const funds = data.datas.map(s => {
-      const arr = s.split(',')
-      return { code: arr[0], name: arr[1] }
-    })
-
-    document.getElementById('status').innerText = `共 ${funds.length} 只LOF，正在加载溢价...`
-
-    // 分批加载，避免浏览器崩
-    for (let i = 0; i < funds.length; i += 20) {
-      const batch = funds.slice(i, i + 20)
-      await Promise.all(batch.map(f => getOne(f)))
-      document.getElementById('status').innerText = `已加载 ${all.length} / ${funds.length}`
-      render()
-      await new Promise(r => setTimeout(r, 1000))
+    document.getElementById('status').innerText = '正在加载数据...'
+    try {
+        // 加时间戳避免缓存
+        const r = await fetch('lof_data.json?_=' + Date.now())
+        const data = await r.json()
+        all = data
+        document.getElementById('status').innerText = `加载完成，共 ${all.length} 只LOF`
+        filterList()
+    } catch (e) {
+        document.getElementById('status').innerText = '加载失败，请稍后重试'
+        console.error(e)
     }
-
-    document.getElementById('status').innerText = '加载完成'
-  } catch (e) {
-    document.getElementById('status').innerText = '加载失败：网络或接口变更'
-  }
 }
 
-// 获取单只LOF价格、净值、溢价
-async function getOne(f) {
-  try {
-    const proxy = 'https://cors-anywhere.herokuapp.com/'
-    const r = await fetch(proxy + `https://fund.eastmoney.com/pingzhongdata/${f.code}.js`)
-    const txt = await r.text()
-
-    // 净值
-    const dwjz = txt.match(/dwjz:"([\d.]+)"/)?.[1] || '-'
-    // 场内现价
-    const price = txt.match(/fundShareNav:"([\d.]+)"/)?.[1] || txt.match(/netChgPct:"([\d.]+)"/)?.[1] || '-'
-
-    let rate = '-'
-    if (price !== '-' && dwjz !== '-') {
-      rate = (((parseFloat(price) - parseFloat(dwjz)) / parseFloat(dwjz)) * 100).toFixed(2)
-    }
-
-    all.push({
-      code: f.code,
-      name: f.name,
-      price,
-      nav: dwjz,
-      rate
-    })
-  } catch (e) {}
-}
-
-// 渲染页面
-function render() {
-  show = [...all]
-  filterList()
-}
-
-// 搜索过滤
 function filterList() {
-  const kw = document.getElementById('search').value.toLowerCase()
-  show = all.filter(f =>
-    f.code.includes(kw) || f.name.toLowerCase().includes(kw)
-  )
-
-  const dom = document.getElementById('list')
-  dom.innerHTML = show.map(f => `
-    <div class="card">
-      <div class="row"><b>${f.code} ${f.name}</b></div>
-      <div class="row">现价 ${f.price} 净值 ${f.nav}</div>
-      <div class="row ${f.rate > 0 ? 'red' : f.rate < 0 ? 'green' : 'grey'}">
-        溢价 ${f.rate > 0 ? '+' : ''}${f.rate}%
-      </div>
-    </div>
-  `).join('')
+    const kw = document.getElementById('search').value.toLowerCase()
+    show = all.filter(f =>
+        f.code.includes(kw) || f.name.toLowerCase().includes(kw)
+    )
+    render()
 }
+
+function render() {
+    const dom = document.getElementById('list')
+    dom.innerHTML = show.map(f => {
+        // 确定溢价显示样式
+        let premiumClass = 'grey'
+        let premiumText = '-'
+        if (f.premium_estimated !== null) {
+            if (f.premium_estimated > 0) premiumClass = 'red'
+            else if (f.premium_estimated < 0) premiumClass = 'green'
+            else premiumClass = 'grey'
+            premiumText = (f.premium_estimated > 0 ? '+' : '') + f.premium_estimated + '%'
+        }
+
+        // 指数信息显示
+        const indexInfo = f.index_name ? `${f.index_name} ${f.index_change > 0 ? '+' : ''}${f.index_change}%` : '无指数信息'
+
+        return `
+        <div class="card">
+            <div class="row"><b>${f.code} ${f.name}</b></div>
+            <div class="row">现价 ${f.price} | 前日净值 ${f.nav_prev}</div>
+            <div class="row">实时估值 ${f.nav_estimated || f.nav_prev} <span class="est-badge">${indexInfo}</span></div>
+            <div class="row ${premiumClass}">实时溢价 ${premiumText}</div>
+            <div class="row grey" style="font-size:12px;">传统溢价 ${f.premium_prev > 0 ? '+' : ''}${f.premium_prev}% (基于前日净值)</div>
+        </div>
+        `
+    }).join('')
+}
+
+window.onload = loadAll
 </script>
 </body>
 </html>
