@@ -45,15 +45,19 @@ INDEX_NAME_TO_SINA = {
 
 # ---------- 工具函数 ----------
 def get_lof_list():
-    """获取 LOF 列表及业绩比较基准"""
+    print("正在调用 fund_basic 接口...")
     df = pro.fund_basic(market='E', fields='ts_code,name,fund_type,benchmark')
     if df is None or df.empty:
-        raise Exception("获取 fund_basic 失败")
-    # 筛选 LOF 类型（fund_type 包含 'LOF'）
-    df = df[df['fund_type'].str.contains('LOF', na=False)]
+        print(" fund_basic 返回为空")
+        return []
+    print(f" fund_basic 原始数据行数: {len(df)}")
+    # 暂时注释掉筛选，看看原始数据
+    # df = df[df['fund_type'].str.contains('LOF', na=False)]
+    # print(f" 筛选后 LOF 数量: {len(df)}")
+    # 改为打印 fund_type 的分布，了解可能的关键词
+    print(" fund_type 值分布:")
+    print(df['fund_type'].value_counts().head(10))
     df['code'] = df['ts_code'].str[:6]
-    # 过滤掉 benchmark 为空的
-    df = df[df['benchmark'].notna()]
     return df.to_dict('records')
 
 def extract_index_name(benchmark):
