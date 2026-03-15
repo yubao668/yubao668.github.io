@@ -16,6 +16,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5   # 建议升级到 v5
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        
+        with:
+          python-version: '3.10'  # 可以指定为 3.9、3.10、3.11 等
+
       - name: Install dependencies
         run: |
           pip install pandas tushare requests
