@@ -1,0 +1,36 @@
+name: Update LOF Premium Data
+
+on:
+  schedule:
+    # 每分钟运行一次（北京时间 9:00-17:00 交易时段可保持高频，其他时段可减少频率）
+    - cron: '*/1 * * * *'
+  workflow_dispatch:   # 允许手动触发
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install pandas tushare requests
+
+      - name: Run fetch script
+        env:
+          TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
+        run: python scripts/fetch_lof.py
+
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add lof_data.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update LOF data at $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          git push
