@@ -40,18 +40,18 @@ let all = []
 let show = []
 
 async function loadAll() {
-    document.getElementById('status').innerText = '正在加载数据...'
-    try {
-        // 加时间戳避免缓存
-        const r = await fetch('lof_data.json?_=' + Date.now())
-        const data = await r.json()
-        all = data
-        document.getElementById('status').innerText = `加载完成，共 ${all.length} 只LOF`
-        filterList()
-    } catch (e) {
-        document.getElementById('status').innerText = '加载失败，请稍后重试'
-        console.error(e)
-    }
+  document.getElementById('status').innerText = '正在加载数据...'
+  try {
+    const r = await fetch('lof_data.json?_=' + Date.now())
+    const data = await r.json()
+    console.log('获取到的数据:', data)  // 打印数据
+    all = data
+    document.getElementById('status').innerText = `加载完成，共 ${all.length} 只LOF`
+    filterList()
+  } catch (e) {
+    document.getElementById('status').innerText = '加载失败，请稍后重试'
+    console.error(e)
+  }
 }
 
 function filterList() {
