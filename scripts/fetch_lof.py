@@ -45,18 +45,15 @@ INDEX_NAME_TO_SINA = {
 
 # ---------- 工具函数 ----------
 def get_lof_list():
-    print("正在调用 fund_basic 接口...")
+    """获取 LOF 列表及业绩比较基准（基于基金名称包含 'LOF' 筛选）"""
     df = pro.fund_basic(market='E', fields='ts_code,name,fund_type,benchmark')
     if df is None or df.empty:
         print(" fund_basic 返回为空")
         return []
     print(f" fund_basic 原始数据行数: {len(df)}")
-    # 暂时注释掉筛选，看看原始数据
-    # df = df[df['fund_type'].str.contains('LOF', na=False)]
-    # print(f" 筛选后 LOF 数量: {len(df)}")
-    # 改为打印 fund_type 的分布，了解可能的关键词
-    print(" fund_type 值分布:")
-    print(df['fund_type'].value_counts().head(10))
+    # 用基金名称包含 'LOF' 筛选
+    df = df[df['name'].str.contains('LOF', na=False)]
+    print(f" 名称包含 'LOF' 的基金数量: {len(df)}")
     df['code'] = df['ts_code'].str[:6]
     return df.to_dict('records')
 
