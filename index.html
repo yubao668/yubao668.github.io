@@ -3,94 +3,241 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全市场LOF折溢价实时查询（带盘中估算）</title>
+    <title>LOF折溢价实时查询（盘中估算）</title>
     <style>
-        body{margin:0;padding:10px;background:#f4f6f8;font-family:system-ui, sans-serif}
-        .container{max-width:800px;margin:0 auto}
-        .title{text-align:center;margin:10px 0 20px;font-size:18px}
-        .btns{display:flex;gap:8px;justify-content:center;margin-bottom:16px}
-        button{padding:8px 12px;border:none;border-radius:8px;background:#42b983;color:white;font-size:14px}
-        input{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px}
-        .list{display:grid;gap:8px}
-        .card{background:white;padding:12px;border-radius:10px;box-shadow:0 1px 3px #0000001}
-        .row{display:flex;justify-content:space-between;font-size:14px;margin:2px 0}
-        .red{color:#ff444f}
-        .green{color:#00b47a}
-        .grey{color:#999}
-        .tip{text-align:center;font-size:12px;color:#999;margin:16px 0 8px}
-        .delay-note{text-align:center;color:#ff6600;margin:5px 0;font-size:14px}
-        .est-badge{background:#eef;padding:2px 5px;border-radius:4px;font-size:12px}
+        body {
+            margin: 0;
+            padding: 10px;
+            background: #f4f6f8;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .title {
+            text-align: center;
+            margin: 10px 0 20px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .delay-note {
+            text-align: center;
+            color: #ff6600;
+            margin: 5px 0 15px;
+            font-size: 14px;
+        }
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #42b983;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #3aa876;
+        }
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            font-size: 14px;
+            min-width: 800px;
+        }
+        th, td {
+            padding: 10px 8px;
+            text-align: right;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f0f2f5;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            white-space: nowrap;
+        }
+        th:hover {
+            background: #e2e6ea;
+        }
+        th.sort-asc::after {
+            content: ' ▲';
+            opacity: 1;
+            font-size: 12px;
+        }
+        th.sort-desc::after {
+            content: ' ▼';
+            opacity: 1;
+            font-size: 12px;
+        }
+        td:first-child, th:first-child {
+            text-align: left;
+            padding-left: 12px;
+        }
+        td:nth-child(2) {
+            text-align: left;
+        }
+        .red { color: #ff444f; }
+        .green { color: #00b47a; }
+        .grey { color: #999; }
+        .tip {
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            margin: 16px 0 8px;
+        }
+        #status {
+            text-align: center;
+            margin: 10px 0;
+            color: #666;
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="title">LOF折溢价实时查询（盘中估算）</div>
     <div class="delay-note">⏱️ 数据每2-5分钟更新一次，实时估值基于跟踪指数估算，仅供参考</div>
-    <input type="text" id="search" placeholder="搜索代码/名称" oninput="filterList()">
-    <div class="btns">
+
+    <div class="search-box">
+        <input type="text" id="search" placeholder="搜索代码/名称" oninput="filterList()">
         <button onclick="loadAll()">刷新数据</button>
     </div>
-    <div id="status" style="text-align:center; margin:10px 0">加载中...</div>
-    <div id="list" class="list"></div>
+
+    <div id="status">加载中...</div>
+
+    <div class="table-wrapper">
+        <table id="list">
+            <thead>
+                <tr>
+                    <th data-sort="code">代码</th>
+                    <th data-sort="name">名称</th>
+                    <th data-sort="price">现价</th>
+                    <th data-sort="nav_estimated">实时估值</th>
+                    <th data-sort="index_change">指数%</th>
+                    <th data-sort="premium_estimated">实时溢价%</th>
+                    <th data-sort="premium_prev">传统溢价%</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 数据由 JavaScript 动态填充 -->
+            </tbody>
+        </table>
+    </div>
+
     <div class="tip">数据来源：Tushare + 新浪财经 | 实时估值 = 前日净值 × (1+指数涨跌幅)</div>
 </div>
 
 <script>
-let all = []
-let show = []
+    let all = [];
+    let show = [];
+    let sortColumn = 'premium_estimated';   // 默认排序列
+    let sortDirection = 'desc';              // 默认降序
 
-async function loadAll() {
-  document.getElementById('status').innerText = '正在加载数据...'
-  try {
-    const r = await fetch('lof_data.json?_=' + Date.now())
-    const data = await r.json()
-    console.log('获取到的数据:', data)  // 打印数据
-    all = data
-    document.getElementById('status').innerText = `加载完成，共 ${all.length} 只LOF`
-    filterList()
-  } catch (e) {
-    document.getElementById('status').innerText = '加载失败，请稍后重试'
-    console.error(e)
-  }
-}
-
-function filterList() {
-    const kw = document.getElementById('search').value.toLowerCase()
-    show = all.filter(f =>
-        f.code.includes(kw) || f.name.toLowerCase().includes(kw)
-    )
-    render()
-}
-
-function render() {
-    const dom = document.getElementById('list')
-    dom.innerHTML = show.map(f => {
-        // 确定溢价显示样式
-        let premiumClass = 'grey'
-        let premiumText = '-'
-        if (f.premium_estimated !== null) {
-            if (f.premium_estimated > 0) premiumClass = 'red'
-            else if (f.premium_estimated < 0) premiumClass = 'green'
-            else premiumClass = 'grey'
-            premiumText = (f.premium_estimated > 0 ? '+' : '') + f.premium_estimated + '%'
+    async function loadAll() {
+        document.getElementById('status').innerText = '正在加载数据...';
+        try {
+            const r = await fetch('lof_data.json?_=' + Date.now());
+            const data = await r.json();
+            all = data;
+            document.getElementById('status').innerText = `加载完成，共 ${all.length} 只LOF`;
+            filterList();
+        } catch (e) {
+            document.getElementById('status').innerText = '加载失败，请稍后重试';
+            console.error(e);
         }
+    }
 
-        // 指数信息显示
-        const indexInfo = f.index_name ? `${f.index_name} ${f.index_change > 0 ? '+' : ''}${f.index_change}%` : '无指数信息'
+    function sortData(array) {
+        const sorted = [...array];
+        sorted.sort((a, b) => {
+            let valA = a[sortColumn];
+            let valB = b[sortColumn];
+            // 处理空值或 undefined：缺失值排在最后
+            if (valA === null || valA === undefined) valA = -Infinity;
+            if (valB === null || valB === undefined) valB = -Infinity;
+            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+        return sorted;
+    }
 
-        return `
-        <div class="card">
-            <div class="row"><b>${f.code} ${f.name}</b></div>
-            <div class="row">现价 ${f.price} | 前日净值 ${f.nav_prev}</div>
-            <div class="row">实时估值 ${f.nav_estimated || f.nav_prev} <span class="est-badge">${indexInfo}</span></div>
-            <div class="row ${premiumClass}">实时溢价 ${premiumText}</div>
-            <div class="row grey" style="font-size:12px;">传统溢价 ${f.premium_prev > 0 ? '+' : ''}${f.premium_prev}% (基于前日净值)</div>
-        </div>
-        `
-    }).join('')
-}
+    function render() {
+        const sortedShow = sortData(show);
+        const tbody = document.querySelector('#list tbody');
+        tbody.innerHTML = sortedShow.map(f => {
+            const premiumClass = f.premium_estimated > 0 ? 'red' : f.premium_estimated < 0 ? 'green' : 'grey';
+            const premiumText = f.premium_estimated !== null ? (f.premium_estimated > 0 ? '+' : '') + f.premium_estimated + '%' : '-';
+            const indexChangeText = f.index_change !== null ? (f.index_change > 0 ? '+' : '') + f.index_change + '%' : '-';
+            const navEstText = f.nav_estimated !== null ? f.nav_estimated.toFixed(4) : '-';
+            const priceText = f.price !== null ? f.price.toFixed(4) : '-';
+            const premiumPrevText = f.premium_prev !== null ? (f.premium_prev > 0 ? '+' : '') + f.premium_prev + '%' : '-';
 
-window.onload = loadAll
+            return `<tr>
+                <td>${f.code}</td>
+                <td>${f.name}</td>
+                <td>${priceText}</td>
+                <td>${navEstText}</td>
+                <td>${indexChangeText}</td>
+                <td class="${premiumClass}">${premiumText}</td>
+                <td class="grey">${premiumPrevText}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function filterList() {
+        const kw = document.getElementById('search').value.toLowerCase();
+        show = all.filter(f =>
+            f.code.includes(kw) || f.name.toLowerCase().includes(kw)
+        );
+        render();
+    }
+
+    // 表头点击排序
+    document.querySelectorAll('#list th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+            const column = th.dataset.sort;
+            if (sortColumn === column) {
+                // 切换方向
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';  // 新列默认升序
+            }
+            // 移除所有排序指示类
+            document.querySelectorAll('#list th').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+            // 添加当前列的指示
+            th.classList.add(sortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+            render();
+        });
+    });
+
+    window.onload = () => {
+        loadAll();
+        // 设置默认排序列的指示箭头
+        const defaultTh = document.querySelector(`#list th[data-sort="${sortColumn}"]`);
+        if (defaultTh) defaultTh.classList.add(sortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+    };
 </script>
 </body>
 </html>
